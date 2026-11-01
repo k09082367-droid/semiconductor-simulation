@@ -1,0 +1,1319 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>반도체 메모리 시뮬레이션 전시관 (Semiconductor Memory Simulation Hub)</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome 아이콘 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+        body {
+            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+            background-color: #090d16;
+            color: #f8fafc;
+        }
+        input[type=range] {
+            accent-color: #3b82f6;
+        }
+        .canvas-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            min-height: 380px;
+        }
+        .hazard-pulse {
+            animation: pulse-border 1.2s infinite;
+        }
+        @keyframes pulse-border {
+            0% { border-color: rgba(239, 68, 68, 0.4); box-shadow: 0 0 10px rgba(239, 68, 68, 0.2); }
+            50% { border-color: rgba(239, 68, 68, 1); box-shadow: 0 0 20px rgba(239, 68, 68, 0.6); }
+            100% { border-color: rgba(239, 68, 68, 0.4); box-shadow: 0 0 10px rgba(239, 68, 68, 0.2); }
+        }
+        
+        /* SSD Grid Cell Styling */
+        .ssd-cell {
+            transition: all 0.2s ease-in-out;
+            user-select: none;
+        }
+        .ssd-cell:hover {
+            transform: scale(1.1);
+            z-index: 10;
+        }
+        /* Tab transitions */
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <!-- 상단 통합 내비게이션 바 -->
+    <header class="bg-slate-950/90 backdrop-blur border-b border-slate-800 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3.5 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-3 cursor-pointer" onclick="switchTab('dashboard')">
+                <div class="p-2.5 bg-gradient-to-tr from-cyan-600 to-blue-600 rounded-xl shadow-lg shadow-cyan-500/20">
+                    <i class="fa-solid fa-microchip text-2xl text-white"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg sm:text-xl font-bold tracking-tight text-white flex items-center gap-2">
+                        반도체 메모리 시뮬레이션 전시관
+                        <span class="text-xs font-normal px-2 py-0.5 bg-cyan-950 text-cyan-400 border border-cyan-800/80 rounded-full">통합 센터</span>
+                    </h1>
+                    <p class="text-xs text-slate-400">Semiconductor Physics & NAND Flash Memory Virtual Lab</p>
+                </div>
+            </div>
+
+            <!-- 탭 전환 버튼 메인 -->
+            <nav class="flex items-center bg-slate-900 p-1.5 rounded-xl border border-slate-800 text-xs sm:text-sm font-medium">
+                <button id="nav-dashboard" onclick="switchTab('dashboard')" class="nav-btn px-4 py-2 rounded-lg transition-all flex items-center gap-2 text-white bg-blue-600 shadow-md">
+                    <i class="fa-solid fa-chart-pie"></i>
+                    <span>대시보드 개요</span>
+                </button>
+                <button id="nav-sim1" onclick="switchTab('sim1')" class="nav-btn px-4 py-2 rounded-lg transition-all flex items-center gap-2 text-slate-400 hover:text-slate-200">
+                    <i class="fa-solid fa-atom"></i>
+                    <span>1. 장기기억장치 (양자터널링)</span>
+                </button>
+                <button id="nav-sim2" onclick="switchTab('sim2')" class="nav-btn px-4 py-2 rounded-lg transition-all flex items-center gap-2 text-slate-400 hover:text-slate-200">
+                    <i class="fa-solid fa-hard-drive"></i>
+                    <span>2. SSD 메모리 소자 (100-Cell)</span>
+                </button>
+            </nav>
+        </div>
+    </header>
+
+    <!-- 메인 컨텐츠 영역 -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6">
+        
+        <!-- ==========================================
+             VIEW 0: 대시보드 개요 (Dashboard Overview)
+             ========================================== -->
+        <section id="view-dashboard" class="tab-content active space-y-8">
+            <!-- 웰컴 히어로 래퍼 -->
+            <div class="relative overflow-hidden bg-gradient-to-r from-slate-900 via-slate-900 to-indigo-950/40 rounded-2xl p-6 sm:p-10 border border-slate-800 shadow-2xl">
+                <div class="relative z-10 max-w-3xl">
+                    <span class="inline-block px-3 py-1 bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded-full text-xs font-semibold mb-3">
+                        <i class="fa-solid fa-flask mr-1"></i> 인터랙티브 반도체 물리 시뮬레이션
+                    </span>
+                    <h2 class="text-2xl sm:text-4xl font-extrabold text-white leading-tight">
+                        차세대 차폐막과 플로팅 게이트 메모리의 동작 원리를 탐구하세요
+                    </h2>
+                    <p class="mt-3 text-slate-300 text-sm sm:text-base leading-relaxed">
+                        트랜지스터 미세화에 따른 양자 터널링 및 누설전류 메커니즘부터, NAND 플래시 메모리의 100-셀 배열 이진 데이터 매핑 및 전압 제어까지 시각적으로 체험해보세요.
+                    </p>
+                    <div class="mt-6 flex flex-wrap gap-4">
+                        <button onclick="switchTab('sim1')" class="bg-blue-600 hover:bg-blue-500 text-white font-semibold px-5 py-2.5 rounded-xl transition shadow-lg shadow-blue-600/30 flex items-center gap-2 text-sm">
+                            <i class="fa-solid fa-play"></i> 장기기억장치 시뮬레이션 실행
+                        </button>
+                        <button onclick="switchTab('sim2')" class="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold px-5 py-2.5 rounded-xl transition flex items-center gap-2 text-sm">
+                            <i class="fa-solid fa-border-all"></i> SSD 100-Cell 매트릭스 실행
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 시뮬레이션 2종 카드 소개 -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                
+                <!-- 카드 1 -->
+                <div class="bg-slate-900 rounded-2xl border border-slate-800 p-6 flex flex-col justify-between hover:border-slate-700 transition group">
+                    <div>
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="p-3 bg-blue-950 text-blue-400 rounded-xl border border-blue-800">
+                                <i class="fa-solid fa-atom text-2xl"></i>
+                            </div>
+                            <span class="text-xs bg-slate-800 text-slate-300 px-2.5 py-1 rounded-full border border-slate-700">물리 엔진 기반</span>
+                        </div>
+                        <h3 class="text-xl font-bold text-white group-hover:text-blue-400 transition">
+                            1. 장기기억장치 전자의 이동과 누설전류
+                        </h3>
+                        <p class="text-slate-400 text-xs sm:text-sm mt-2 leading-relaxed">
+                            나노미터 단위 미세화로 발생하는 양자 역학적 터널링 현상을 직접 시뮬레이션합니다. 산화막 두께, 게이트 전압, 온도를 조절하며 실시간 V-I 그래프 및 누설 전류 위험 요인을 측정합니다.
+                        </p>
+                        <ul class="mt-4 space-y-2 text-xs text-slate-300">
+                            <li class="flex items-center gap-2"><i class="fa-solid fa-check text-cyan-400"></i> 실시간 양자 터널링 파티클 연산</li>
+                            <li class="flex items-center gap-2"><i class="fa-solid fa-check text-cyan-400"></i> 산화막 두께(1~50nm) & 전압 조절 슬라이더</li>
+                            <li class="flex items-center gap-2"><i class="fa-solid fa-check text-cyan-400"></i> 동적 스케일 적용 실시간 V-I 그래프</li>
+                        </ul>
+                    </div>
+                    <button onclick="switchTab('sim1')" class="mt-6 w-full bg-slate-800 hover:bg-blue-600 hover:text-white text-slate-200 py-2.5 rounded-xl border border-slate-700 hover:border-blue-500 font-semibold text-sm transition flex items-center justify-center gap-2">
+                        시뮬레이션 관람하기 <i class="fa-solid fa-arrow-right text-xs"></i>
+                    </button>
+                </div>
+
+                <!-- 카드 2 -->
+                <div class="bg-slate-900 rounded-2xl border border-slate-800 p-6 flex flex-col justify-between hover:border-slate-700 transition group">
+                    <div>
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="p-3 bg-amber-950 text-amber-400 rounded-xl border border-amber-800">
+                                <i class="fa-solid fa-hard-drive text-2xl"></i>
+                            </div>
+                            <span class="text-xs bg-slate-800 text-slate-300 px-2.5 py-1 rounded-full border border-slate-700">10×10 NAND Flash</span>
+                        </div>
+                        <h3 class="text-xl font-bold text-white group-hover:text-amber-400 transition">
+                            2. SSD 메모리 소자의 원리 (100-Cell)
+                        </h3>
+                        <p class="text-slate-400 text-xs sm:text-sm mt-2 leading-relaxed">
+                            NAND Flash 메모리의 100개 트랜지스터 셀 배열을 구현했습니다. 사용자가 입력한 문자열(한글/영문)을 이진 비트로 전환하여 플로팅 게이트 전하 충·방전 동작을 시각화합니다.
+                        </p>
+                        <ul class="mt-4 space-y-2 text-xs text-slate-300">
+                            <li class="flex items-center gap-2"><i class="fa-solid fa-check text-amber-400"></i> 텍스트 -> 이진수 비트 자동 변환 매핑</li>
+                            <li class="flex items-center gap-2"><i class="fa-solid fa-check text-amber-400"></i> 프로그램(+20V) 및 소거(-20V) 전압 시뮬레이션</li>
+                            <li class="flex items-center gap-2"><i class="fa-solid fa-check text-amber-400"></i> 개별 셀 클릭 시 전자 주입/방출 수동 제어</li>
+                        </ul>
+                    </div>
+                    <button onclick="switchTab('sim2')" class="mt-6 w-full bg-slate-800 hover:bg-amber-600 hover:text-white text-slate-200 py-2.5 rounded-xl border border-slate-700 hover:border-amber-500 font-semibold text-sm transition flex items-center justify-center gap-2">
+                        시뮬레이션 관람하기 <i class="fa-solid fa-arrow-right text-xs"></i>
+                    </button>
+                </div>
+
+            </div>
+
+            <!-- 핵심 개념 및 물리 특성 비교표 -->
+            <div class="bg-slate-900 rounded-2xl border border-slate-800 p-6 shadow-xl">
+                <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-table-columns text-cyan-400"></i> 두 시뮬레이션의 물리 특성 및 핵심 기술 비교
+                </h3>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-xs sm:text-sm text-left text-slate-300 border-collapse">
+                        <thead class="bg-slate-950 text-slate-400 font-semibold border-b border-slate-800">
+                            <tr>
+                                <th class="p-3">비교 항목</th>
+                                <th class="p-3 text-blue-400">장기기억장치 (양자터널링 시뮬레이션)</th>
+                                <th class="p-3 text-amber-400">SSD 메모리 소자 (NAND Flash 100-Cell)</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-800/60">
+                            <tr class="hover:bg-slate-800/40">
+                                <td class="p-3 font-semibold text-white">주요 중점 분야</td>
+                                <td class="p-3">미세공정 한계 극복 및 양자 누설 전류 제어</td>
+                                <td class="p-3">비휘발성 데이터 저장 및 이진수 비트 구조 매핑</td>
+                            </tr>
+                            <tr class="hover:bg-slate-800/40">
+                                <td class="p-3 font-semibold text-white">핵심 물리 원리</td>
+                                <td class="p-3">Fowler-Nordheim 직접 양자 터널링, 서브임계 누설</td>
+                                <td class="p-3">플로팅 게이트 내 전하 갇힘 현상 및 문턱전압(Vth) 변화</td>
+                            </tr>
+                            <tr class="hover:bg-slate-800/40">
+                                <td class="p-3 font-semibold text-white">동작 전압 범위</td>
+                                <td class="p-3">0.0 V ~ 5.0 V (게이트 문턱 제어)</td>
+                                <td class="p-3">+20 V (Program 쓰기) / -20 V (Erase 소거)</td>
+                            </tr>
+                            <tr class="hover:bg-slate-800/40">
+                                <td class="p-3 font-semibold text-white">데이터 판정 기준</td>
+                                <td class="p-3">갇힌 전자 10개 이상 = Bit '0' / 미만 = Bit '1'</td>
+                                <td class="p-3">전자 있음(Data 0) / 전자 없음(Data 1, 초기 상태)</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==========================================
+             VIEW 1: 장기기억장치 시뮬레이션 (Simulation 1)
+             ========================================== -->
+        <section id="view-sim1" class="tab-content space-y-6">
+            <div class="bg-slate-900 rounded-2xl shadow-2xl border border-slate-800 overflow-hidden">
+                
+                <!-- 상단 헤더 -->
+                <header class="bg-slate-950 px-6 py-4 flex flex-col md:flex-row justify-between items-center gap-4 border-b border-slate-800">
+                    <div class="flex items-center gap-3">
+                        <div class="p-2.5 bg-blue-600 rounded-xl shadow-lg shadow-blue-500/30">
+                            <i class="fa-solid fa-atom text-xl text-white"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-lg sm:text-xl font-bold tracking-tight text-white">장기기억장치에서의 전자의 이동과 누설전류 시뮬레이션</h2>
+                            <p class="text-xs text-slate-400 mt-0.5">트랜지스터 미세화로 인한 양자 터널링 및 누설전류 물리 시뮬레이션</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <div class="flex items-center gap-2 bg-slate-800/90 px-4 py-2 rounded-lg border border-slate-700 text-xs sm:text-sm">
+                            <span class="inline-block w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping"></span>
+                            <span>실시간 물리 엔진 작동 중</span>
+                        </div>
+                    </div>
+                </header>
+
+                <!-- 메인 영역 -->
+                <div class="p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+                    
+                    <!-- 좌측: 시뮬레이션 화면 및 제어 버튼 -->
+                    <div class="lg:col-span-7 flex flex-col gap-4">
+                        <div class="bg-slate-950 rounded-xl p-4 border border-slate-800 flex flex-col justify-between relative overflow-hidden shadow-inner min-h-[420px]">
+                            
+                            <!-- 캔버스 내부 상단 상태 표시 줄 -->
+                            <div class="flex justify-between items-center z-10 text-xs sm:text-sm mb-2">
+                                <div class="bg-slate-900/90 backdrop-blur border border-slate-700 text-slate-200 px-3 py-1.5 rounded-lg flex items-center gap-2">
+                                    <span class="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse"></span>
+                                    <span>플로팅 게이트 메모리 셀 시뮬레이션</span>
+                                </div>
+                                <div id="statusBadge" class="bg-emerald-950/80 border border-emerald-600/50 text-emerald-300 px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 text-xs">
+                                    <i class="fa-solid fa-shield-halved text-xs"></i>
+                                    <span>상태: 정상 (절연 유지)</span>
+                                </div>
+                            </div>
+
+                            <!-- 메인 시뮬레이션 캔버스 -->
+                            <div class="canvas-container flex-1 my-1">
+                                <canvas id="simCanvas" class="w-full h-full block rounded-lg cursor-crosshair"></canvas>
+
+                                <!-- 경고 배너 -->
+                                <div id="warningBanner" class="hidden absolute top-3 left-1/2 -translate-x-1/2 bg-red-950/90 backdrop-blur-md border border-red-500 text-red-100 z-20 px-4 py-2 rounded-xl shadow-xl flex items-center gap-3 hazard-pulse">
+                                    <i class="fa-solid fa-triangle-exclamation text-red-400 text-lg"></i>
+                                    <div>
+                                        <h4 class="font-bold text-xs sm:text-sm text-red-200">초고전류 누설 위험 경고</h4>
+                                        <p class="text-[11px] text-red-300">누설전류가 위험 수준(1mA / 0.001A 이상)에 도달하여 데이터 보존이 불가능합니다.</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 캔버스 하단 정보 -->
+                            <div class="z-10 flex flex-wrap justify-between items-center text-xs text-slate-400 bg-slate-900/90 p-2.5 rounded-lg border border-slate-800 gap-2">
+                                <span id="canvasGridDensity"><i class="fa-solid fa-table-cells text-blue-400 mr-1"></i>트랜지스터 미세화 스케일: 50 nm</span>
+                                <span id="electricFieldText"><i class="fa-solid fa-bolt text-yellow-400 mr-1"></i>산화막 전기장: 0.00 MV/cm</span>
+                            </div>
+                        </div>
+
+                        <!-- 시뮬레이션 제어 버튼 -->
+                        <div class="flex items-center gap-3 bg-slate-900 p-3 rounded-xl border border-slate-800">
+                            <button id="btnStart" class="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2.5 px-4 rounded-lg transition flex items-center justify-center gap-2 shadow-lg shadow-blue-600/30 text-xs sm:text-sm">
+                                <i class="fa-solid fa-play text-xs"></i> 시작
+                            </button>
+                            <button id="btnPause" class="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-semibold py-2.5 px-4 rounded-lg transition flex items-center justify-center gap-2 text-xs sm:text-sm">
+                                <i class="fa-solid fa-pause text-xs"></i> 정지
+                            </button>
+                            <button id="btnReset" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold py-2.5 px-4 rounded-lg transition flex items-center justify-center gap-2 border border-slate-700 text-xs sm:text-sm">
+                                <i class="fa-solid fa-rotate-right text-xs"></i> 재시작
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 우측: 조작 변인 슬라이더 탭 -->
+                    <div class="lg:col-span-5 bg-slate-950/80 rounded-xl p-5 border border-slate-800 flex flex-col justify-between gap-4">
+                        <div>
+                            <div class="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
+                                <h3 class="font-bold text-slate-100 text-base sm:text-lg flex items-center gap-2">
+                                    <i class="fa-solid fa-sliders text-blue-500"></i> 조작 변인 제어
+                                </h3>
+                                <span class="text-xs text-slate-400 bg-slate-800 px-2.5 py-1 rounded border border-slate-700">실시간 반영</span>
+                            </div>
+
+                            <div class="space-y-4">
+                                <!-- 슬라이더 1: 산화막 두께 -->
+                                <div class="bg-slate-900 p-3.5 rounded-xl border border-slate-800 hover:border-slate-700 transition">
+                                    <div class="flex justify-between items-center mb-1.5">
+                                        <label for="rangeTox" class="text-xs sm:text-sm font-semibold text-slate-200 flex items-center gap-1.5">
+                                            <i class="fa-solid fa-layer-group text-blue-400"></i> 산화막 두께
+                                        </label>
+                                        <span class="font-bold text-blue-400 text-sm bg-blue-950/80 px-2 py-0.5 rounded border border-blue-800" id="valTox">5 nm</span>
+                                    </div>
+                                    <input type="range" id="rangeTox" min="1" max="50" step="1" value="5" class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer">
+                                    <div class="flex justify-between text-[11px] text-slate-400 mt-1">
+                                        <span>1 nm (극미세 누설)</span>
+                                        <span>25 nm</span>
+                                        <span>50 nm (안정 절연)</span>
+                                    </div>
+                                </div>
+
+                                <!-- 슬라이더 2: 게이트 전압 -->
+                                <div class="bg-slate-900 p-3.5 rounded-xl border border-slate-800 hover:border-slate-700 transition">
+                                    <div class="flex justify-between items-center mb-1.5">
+                                        <label for="rangeVgate" class="text-xs sm:text-sm font-semibold text-slate-200 flex items-center gap-1.5">
+                                            <i class="fa-solid fa-bolt text-yellow-400"></i> 게이트 전압
+                                        </label>
+                                        <span class="font-bold text-yellow-400 text-sm bg-yellow-950/80 px-2 py-0.5 rounded border border-yellow-800" id="valVgate">0.0 V</span>
+                                    </div>
+                                    <input type="range" id="rangeVgate" min="0" max="5" step="0.1" value="0" class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer">
+                                    <div class="flex justify-between text-[11px] text-slate-400 mt-1">
+                                        <span>0.0 V (대기)</span>
+                                        <span>2.0 V (문턱전압)</span>
+                                        <span>5.0 V (최대)</span>
+                                    </div>
+                                </div>
+
+                                <!-- 슬라이더 3: 채널 길이 -->
+                                <div class="bg-slate-900 p-3.5 rounded-xl border border-slate-800 hover:border-slate-700 transition">
+                                    <div class="flex justify-between items-center mb-1.5">
+                                        <label for="rangeLchannel" class="text-xs sm:text-sm font-semibold text-slate-200 flex items-center gap-1.5">
+                                            <i class="fa-solid fa-ruler-horizontal text-emerald-400"></i> 채널 길이 (미세화 스케일)
+                                        </label>
+                                        <span class="font-bold text-emerald-400 text-sm bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-800" id="valLchannel">50 nm</span>
+                                    </div>
+                                    <input type="range" id="rangeLchannel" min="30" max="100" step="1" value="50" class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer">
+                                    <div class="flex justify-between text-[11px] text-slate-400 mt-1">
+                                        <span>30 nm (고집적)</span>
+                                        <span>65 nm</span>
+                                        <span>100 nm (대형 셀)</span>
+                                    </div>
+                                    <div class="mt-2.5 flex items-center gap-2">
+                                        <input type="checkbox" id="chkAutoProportional" checked class="w-3.5 h-3.5 text-blue-600 bg-slate-800 border-slate-700 rounded">
+                                        <label for="chkAutoProportional" class="text-xs text-slate-300 cursor-pointer">채널 미세화 진행 시 산화막 두께 비례 감소</label>
+                                    </div>
+                                </div>
+
+                                <!-- 슬라이더 4: 온도 -->
+                                <div class="bg-slate-900 p-3.5 rounded-xl border border-slate-800 hover:border-slate-700 transition">
+                                    <div class="flex justify-between items-center mb-1.5">
+                                        <label for="rangeTemp" class="text-xs sm:text-sm font-semibold text-slate-200 flex items-center gap-1.5">
+                                            <i class="fa-solid fa-temperature-half text-rose-400"></i> 온도
+                                        </label>
+                                        <span class="font-bold text-rose-400 text-sm bg-rose-950/80 px-2 py-0.5 rounded border border-rose-800" id="valTemp">0 °C</span>
+                                    </div>
+                                    <input type="range" id="rangeTemp" min="0" max="100" step="1" value="0" class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer">
+                                    <div class="flex justify-between text-[11px] text-slate-400 mt-1">
+                                        <span>0 °C (상온)</span>
+                                        <span>50 °C</span>
+                                        <span>100 °C (고온)</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 물리 고정 상수 표기 -->
+                        <div class="bg-slate-900/90 p-3 rounded-lg border border-slate-800 text-slate-400 text-xs space-y-1">
+                            <div class="font-bold text-slate-300 flex items-center gap-1">
+                                <i class="fa-solid fa-atom text-blue-400"></i> 물리 법칙 고정 상수
+                            </div>
+                            <div class="grid grid-cols-2 gap-x-2 gap-y-0.5 text-[11px] text-slate-400 pt-1">
+                                <span>전하량(e): -1.602×10⁻¹⁹ C</span>
+                                <span>유효질량(m*): 0.19 m₀</span>
+                                <span>상수 A: 1.0 / B: 4.0 / C: 0.5</span>
+                                <span>문턱 전압: 2.0 V</span>
+                                <span>기준 전류: 0.01 A</span>
+                                <span>열전압: 0.025 V (@ 273 K)</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 하단 영역: 실시간 데이터 표 및 V-I 그래프 -->
+                <div class="p-4 sm:p-6 bg-slate-950 border-t border-slate-800 grid grid-cols-1 lg:grid-cols-12 gap-6">
+                    
+                    <!-- 1. 데이터 측정표 -->
+                    <div class="lg:col-span-4 bg-slate-900 p-4 rounded-xl border border-slate-800 shadow-lg flex flex-col justify-between">
+                        <h3 class="font-bold text-slate-200 text-sm mb-3 flex items-center gap-2 border-b border-slate-800 pb-2">
+                            <i class="fa-solid fa-table-list text-blue-400"></i> 실시간 데이터 측정표
+                        </h3>
+                        <div class="space-y-2 text-xs sm:text-sm">
+                            <div class="flex justify-between items-center p-2.5 bg-slate-950 rounded-lg border border-slate-800">
+                                <span class="text-slate-400 font-medium">저장된 전자 수 (게이트 내)</span>
+                                <span class="font-bold text-cyan-400 text-base" id="txtTrappedElectrons">0 개</span>
+                            </div>
+
+                            <div class="flex justify-between items-center p-2.5 bg-slate-950 rounded-lg border border-slate-800">
+                                <span class="text-slate-400 font-medium">메모리 데이터 비트 판정</span>
+                                <div id="bitStateBadge" class="px-3 py-1 rounded font-black text-xs bg-emerald-950 text-emerald-300 border border-emerald-700">
+                                    '1' (소거 상태)
+                                </div>
+                            </div>
+
+                            <div class="flex justify-between items-center p-2.5 bg-slate-950 rounded-lg border border-slate-800">
+                                <span class="text-slate-400 font-medium">터널링 확률 및 통과율</span>
+                                <span class="font-bold text-purple-400" id="txtTunnelProbability">0.00 %</span>
+                            </div>
+
+                            <div class="flex justify-between items-center p-2.5 bg-slate-950 rounded-lg border border-slate-800">
+                                <span class="text-slate-400 font-medium">터널링 누설전류</span>
+                                <span class="font-bold text-red-400" id="txtLeakageCurrent">0.0000 A</span>
+                            </div>
+
+                            <div class="flex justify-between items-center p-2.5 bg-slate-950 rounded-lg border border-slate-800">
+                                <span class="text-slate-400 font-medium">서브임계 누설전류</span>
+                                <span class="font-bold text-amber-400" id="txtSubthresholdCurrent">0.0000 A</span>
+                            </div>
+                        </div>
+
+                        <div class="mt-3 p-2.5 bg-blue-950/50 rounded-lg border border-blue-900/60 text-[11px] text-blue-300 leading-tight">
+                            <i class="fa-solid fa-circle-info mr-1 text-blue-400"></i>
+                            갇힌 전자 10개 이상 시 비트 '0' (프로그램), 10개 미만 시 '1' (소거)로 판정합니다.
+                        </div>
+                    </div>
+
+                    <!-- 2. V-I 곡선 그래프 -->
+                    <div class="lg:col-span-5 bg-slate-900 p-4 rounded-xl border border-slate-800 shadow-lg flex flex-col justify-between">
+                        <div class="flex justify-between items-center mb-2 border-b border-slate-800 pb-2">
+                            <h3 class="font-bold text-slate-200 text-sm flex items-center gap-2">
+                                <i class="fa-solid fa-chart-line text-blue-400"></i> 전압-전류 (V-I) 특성 곡선
+                            </h3>
+                            <div class="flex items-center gap-2 text-[11px]">
+                                <span class="text-slate-400"><i class="fa-solid fa-mouse mr-1"></i>마우스 탐색</span>
+                                <span id="graphScaleTag" class="bg-blue-950 text-blue-300 px-1.5 py-0.5 rounded border border-blue-800">동적 스케일</span>
+                            </div>
+                        </div>
+                        
+                        <div class="w-full h-52 relative">
+                            <canvas id="graphCanvas" class="w-full h-full block rounded bg-slate-950 border border-slate-800 cursor-crosshair"></canvas>
+                        </div>
+
+                        <div class="flex justify-between text-[11px] text-slate-400 mt-2 px-1">
+                            <span>가로축: 게이트 전압 (0V ~ 5V)</span>
+                            <span>세로축: 총 전류 I (A)</span>
+                        </div>
+                    </div>
+
+                    <!-- 3. 양자 분석 정보 -->
+                    <div class="lg:col-span-3 bg-slate-900 p-4 rounded-xl border border-slate-800 shadow-lg flex flex-col justify-between">
+                        <h3 class="font-bold text-slate-200 text-sm mb-2 border-b border-slate-800 pb-2 flex items-center gap-2">
+                            <i class="fa-solid fa-circle-nodes text-cyan-400"></i> 양자역학 및 누설 분석
+                        </h3>
+                        
+                        <div class="space-y-2 text-xs text-slate-300 leading-relaxed">
+                            <p class="bg-slate-950 p-2.5 rounded border border-slate-800">
+                                <strong class="text-slate-100">두꺼운 산화막 (≥ 10 nm):</strong>
+                                장벽 터널링 확률이 극히 낮아 누설전류가 <span class="font-semibold text-emerald-400">0.00 A</span>로 차단됩니다.
+                            </p>
+                            <p class="bg-slate-950 p-2.5 rounded border border-slate-800">
+                                <strong class="text-slate-100">미세화 진행 (&lt; 10 nm):</strong>
+                                얇아진 절연체로 직접 터널링 및 서브임계 전류가 급격하게 증가합니다.
+                            </p>
+                        </div>
+
+                        <div id="riskIndicatorBox" class="mt-2 p-2.5 rounded-lg border bg-emerald-950/60 border-emerald-700/60 text-emerald-300 text-xs font-semibold flex items-center gap-2">
+                            <i class="fa-solid fa-circle-check text-emerald-400 text-base" id="riskIndicatorIcon"></i>
+                            <span id="riskIndicatorText">누설 전류 안전 범위 유지</span>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </section>
+
+        <!-- ==========================================
+             VIEW 2: SSD 메모리 소자 시뮬레이션 (Simulation 2)
+             ========================================== -->
+        <section id="view-sim2" class="tab-content space-y-6">
+            <div class="bg-slate-900 rounded-2xl shadow-2xl border border-slate-800 overflow-hidden p-6">
+                
+                <header class="border-b border-slate-800 pb-4 mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                    <div>
+                        <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-microchip text-amber-500"></i> SSD 메모리 소자의 원리
+                        </h2>
+                        <p class="text-xs text-slate-400 mt-1">NAND Flash 100-Cell (10×10 Matrix) 구조 및 이진 비트 저장 시뮬레이션</p>
+                    </div>
+                    <div id="ssdVoltageBanner" class="px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-slate-800 text-slate-300 border border-slate-700 transition-all">
+                        현재 상태: 대기 중 (인프라 전압: 0V)
+                    </div>
+                </header>
+
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                    
+                    <!-- 좌측: 10x10 셀 그리드 및 범례 -->
+                    <div class="lg:col-span-6 flex flex-col items-center bg-slate-950 p-6 rounded-2xl border border-slate-800 shadow-inner">
+                        <div class="grid grid-cols-10 gap-2 p-3 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl" id="cellGrid">
+                            <!-- JS로 100개 셀 자동 생성 -->
+                        </div>
+
+                        <div class="flex flex-wrap justify-center gap-6 mt-6 text-xs text-slate-300">
+                            <div class="flex items-center gap-2">
+                                <div class="w-4 h-4 rounded bg-cyan-950 border border-cyan-500/50"></div>
+                                <span>Data 1 (전자 없음 / 소거 상태)</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <div class="w-4 h-4 rounded bg-amber-500/20 border border-amber-500"></div>
+                                <span>Data 0 (전자 갇힘 / 프로그램 상태)</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 우측: 제어 패널 및 이진 비트 분석 -->
+                    <div class="lg:col-span-6 space-y-5">
+                        
+                        <!-- 데이터 입력 및 버튼 카드 -->
+                        <div class="bg-slate-950 p-5 rounded-2xl border border-slate-800 space-y-3">
+                            <h3 class="text-sm font-bold text-slate-200 flex items-center gap-2">
+                                <i class="fa-solid fa-pen-to-square text-amber-400"></i> 데이터 저장 (Write / Program)
+                            </h3>
+                            <div class="flex flex-col sm:flex-row gap-2">
+                                <input type="text" id="ssdUserInput" placeholder="저장할 텍스트 (예: 사과, A)" value="사과" class="flex-1 px-3.5 py-2 bg-slate-900 border border-slate-700 rounded-xl text-sm text-white focus:outline-none focus:border-amber-500">
+                                <div class="flex gap-2">
+                                    <button onclick="writeInputData()" class="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white font-semibold rounded-xl text-xs sm:text-sm transition shadow-lg shadow-amber-600/20">
+                                        데이터 쓰기
+                                    </button>
+                                    <button onclick="eraseAllData()" class="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white font-semibold rounded-xl text-xs sm:text-sm transition">
+                                        전체 소거
+                                    </button>
+                                </div>
+                            </div>
+                            <p class="text-[11px] text-slate-400">
+                                * 입력한 텍스트가 8/16비트 이진법(0과 1)으로 변환되어 트랜지스터 셀 배열에 순차적으로 적용됩니다.
+                            </p>
+                        </div>
+
+                        <!-- 이진법 변환 출력 결과 -->
+                        <div class="bg-slate-950 p-5 rounded-2xl border border-slate-800 space-y-2">
+                            <h3 class="text-sm font-bold text-slate-200 flex items-center gap-2">
+                                <i class="fa-solid fa-binary text-cyan-400"></i> 이진법 (Binary) 변환 비트 데이터
+                            </h3>
+                            <div id="ssdBinaryOutput" class="p-3 bg-slate-900 rounded-xl font-mono text-xs text-slate-300 border border-slate-800 break-all leading-relaxed max-h-28 overflow-y-auto">
+                                [데이터 쓰기 버튼을 누르면 이진수 비트 패턴이 나타납니다]
+                            </div>
+                        </div>
+
+                        <!-- NAND Flash 동작 원리 -->
+                        <div class="bg-slate-950 p-5 rounded-2xl border border-slate-800 space-y-2 text-xs text-slate-300 leading-relaxed">
+                            <h3 class="text-sm font-bold text-slate-200 mb-2 flex items-center gap-2">
+                                <i class="fa-solid fa-bolt text-yellow-400"></i> SSD 소자 동작 물리 메커니즘
+                            </h3>
+                            <ul class="space-y-1.5 list-disc list-inside text-slate-400">
+                                /><strong class="text-slate-200">쓰기 전압 (+20V):</strong> 게이트에 높은 양(+)전압을 가해 전자를 산화막 너머 플로팅 게이트 안으로 밀어 넣습니다 (F-N 터널링).
+                                /><strong class="text-slate-200">소거 전압 (-20V):</strong> 기판 쪽에 역방향 음(-)전압을 가해 갇혀 있던 전자를 밖으로 다시 방출합니다.
+                                /><strong class="text-slate-200">문턱전압 (Vth):</strong> 전자가 갇히면 문턱전압이 높아져 전류가 차단(Data 0), 전자가 없으면 전류가 통과(Data 1)합니다.
+                            </ul>
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+        </section>
+
+    </main>
+
+    <!-- 스크립트 메인 연동 -->
+    <script>
+        /* ==========================================================================
+           1. TAB NAVIGATION CONTROLLER
+           ========================================================================== */
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.className = 'nav-btn px-4 py-2 rounded-lg transition-all flex items-center gap-2 text-slate-400 hover:text-slate-200';
+            });
+
+            document.getElementById(`view-${tabId}`).classList.add('active');
+            
+            const activeBtn = document.getElementById(`nav-${tabId}`);
+            if (tabId === 'dashboard') {
+                activeBtn.className = 'nav-btn px-4 py-2 rounded-lg transition-all flex items-center gap-2 text-white bg-blue-600 shadow-md';
+            } else if (tabId === 'sim1') {
+                activeBtn.className = 'nav-btn px-4 py-2 rounded-lg transition-all flex items-center gap-2 text-white bg-blue-600 shadow-md';
+                resizeCanvases();
+            } else if (tabId === 'sim2') {
+                activeBtn.className = 'nav-btn px-4 py-2 rounded-lg transition-all flex items-center gap-2 text-white bg-amber-600 shadow-md';
+            }
+        }
+
+        /* ==========================================================================
+           2. SIMULATION 1: 장기기억장치 양자터널링 엔진
+           ========================================================================== */
+        const CONSTANTS = {
+            e: 1.602e-19,
+            m0: 9.11e-31,
+            mEffRatio: 0.19,
+            A: 1.0,
+            B: 4.0,
+            C: 0.5,
+            I0: 0.01,
+            VT0: 0.025,
+            Vth: 2.0,
+            H: 1.5
+        };
+
+        let simState = {
+            running: true,
+            tox: 5,
+            vgate: 0.0,
+            lchannel: 50,
+            tempC: 0,
+            autoProportional: true,
+            
+            electricField: 0,
+            tunnelProb: 0,
+            iLeakage: 0,
+            iSub: 0,
+            iTotal: 0,
+            
+            sourceElectrons: [],
+            trappedElectrons: [],
+            leakageParticles: [],
+            
+            viHistory: []
+        };
+
+        const simCanvas = document.getElementById('simCanvas');
+        const simCtx = simCanvas.getContext('2d');
+        const graphCanvas = document.getElementById('graphCanvas');
+        const graphCtx = graphCanvas.getContext('2d');
+
+        const rangeTox = document.getElementById('rangeTox');
+        const rangeVgate = document.getElementById('rangeVgate');
+        const rangeLchannel = document.getElementById('rangeLchannel');
+        const rangeTemp = document.getElementById('rangeTemp');
+        const chkAutoProportional = document.getElementById('chkAutoProportional');
+
+        const valTox = document.getElementById('valTox');
+        const valVgate = document.getElementById('valVgate');
+        const valLchannel = document.getElementById('valLchannel');
+        const valTemp = document.getElementById('valTemp');
+
+        const txtTrappedElectrons = document.getElementById('txtTrappedElectrons');
+        const bitStateBadge = document.getElementById('bitStateBadge');
+        const txtTunnelProbability = document.getElementById('txtTunnelProbability');
+        const txtLeakageCurrent = document.getElementById('txtLeakageCurrent');
+        const txtSubthresholdCurrent = document.getElementById('txtSubthresholdCurrent');
+        const electricFieldText = document.getElementById('electricFieldText');
+        const canvasGridDensity = document.getElementById('canvasGridDensity');
+
+        const warningBanner = document.getElementById('warningBanner');
+        const statusBadge = document.getElementById('statusBadge');
+        const riskIndicatorBox = document.getElementById('riskIndicatorBox');
+        const riskIndicatorIcon = document.getElementById('riskIndicatorIcon');
+        const riskIndicatorText = document.getElementById('riskIndicatorText');
+
+        let graphHoverPos = null;
+
+        function resizeCanvases() {
+            if (simCanvas && simCanvas.parentElement) {
+                simCanvas.width = simCanvas.parentElement.clientWidth;
+                simCanvas.height = simCanvas.parentElement.clientHeight;
+            }
+            if (graphCanvas && graphCanvas.parentElement) {
+                graphCanvas.width = graphCanvas.parentElement.clientWidth;
+                graphCanvas.height = graphCanvas.parentElement.clientHeight;
+            }
+        }
+
+        function initParticles() {
+            simState.sourceElectrons = [];
+            simState.trappedElectrons = [];
+            simState.leakageParticles = [];
+
+            for (let i = 0; i < 7; i++) {
+                spawnSourceElectron();
+            }
+        }
+
+        function spawnSourceElectron() {
+            const w = simCanvas.width || 500;
+            const h = simCanvas.height || 380;
+            simState.sourceElectrons.push({
+                x: Math.random() * (w * 0.12) + 15,
+                y: Math.random() * (h - 100) + 50,
+                vx: (Math.random() * 0.8 + 0.6),
+                vy: (Math.random() - 0.5) * 0.6,
+                radius: 14
+            });
+        }
+
+        function setupEventListeners() {
+            document.getElementById('btnStart').addEventListener('click', () => { simState.running = true; });
+            document.getElementById('btnPause').addEventListener('click', () => { simState.running = false; });
+            document.getElementById('btnReset').addEventListener('click', () => {
+                simState.viHistory = [];
+                initParticles();
+                simState.running = true;
+            });
+
+            rangeTox.addEventListener('input', (e) => {
+                simState.tox = parseFloat(e.target.value);
+                valTox.innerText = `${simState.tox} nm`;
+                updatePhysics();
+            });
+
+            rangeVgate.addEventListener('input', (e) => {
+                simState.vgate = parseFloat(e.target.value);
+                valVgate.innerText = `${simState.vgate.toFixed(1)} V`;
+                updatePhysics();
+            });
+
+            rangeLchannel.addEventListener('input', (e) => {
+                simState.lchannel = parseInt(e.target.value);
+                valLchannel.innerText = `${simState.lchannel} nm`;
+
+                if (simState.autoProportional) {
+                    const newTox = Math.max(1, Math.round((simState.lchannel / 30) * 20 - 19));
+                    simState.tox = newTox;
+                    rangeTox.value = newTox;
+                    valTox.innerText = `${newTox} nm`;
+                }
+                updatePhysics();
+            });
+
+            rangeTemp.addEventListener('input', (e) => {
+                simState.tempC = parseInt(e.target.value);
+                valTemp.innerText = `${simState.tempC} °C`;
+                updatePhysics();
+            });
+
+            chkAutoProportional.addEventListener('change', (e) => {
+                simState.autoProportional = e.target.checked;
+            });
+
+            graphCanvas.addEventListener('mousemove', (e) => {
+                const rect = graphCanvas.getBoundingClientRect();
+                graphHoverPos = {
+                    x: e.clientX - rect.left,
+                    y: e.clientY - rect.top
+                };
+            });
+
+            graphCanvas.addEventListener('mouseleave', () => {
+                graphHoverPos = null;
+            });
+        }
+
+        function updatePhysics() {
+            const E_field = simState.vgate / (simState.tox * 1e-7);
+            simState.electricField = E_field / 1e6;
+
+            if (simState.tox >= 10.0) {
+                simState.iLeakage = 0.0;
+                simState.tunnelProb = 0.0;
+            } else {
+                const E_eff = Math.max(0.001, simState.electricField);
+                const tunnelFactor = CONSTANTS.A * Math.pow(E_eff, 2) * Math.exp(-CONSTANTS.B / E_eff);
+                const thicknessDecay = Math.exp(-CONSTANTS.C * simState.tox);
+                simState.iLeakage = tunnelFactor * thicknessDecay;
+                simState.tunnelProb = Math.min(1.0, (simState.iLeakage / 0.5) + (10 - simState.tox) * 0.1);
+            }
+
+            const tempK = 273.15 + simState.tempC;
+            const Vt = CONSTANTS.VT0 * (tempK / 273.15);
+            if (simState.vgate < CONSTANTS.Vth) {
+                simState.iSub = CONSTANTS.I0 * Math.exp((simState.vgate - CONSTANTS.Vth) / (1.5 * Vt));
+            } else {
+                simState.iSub = CONSTANTS.I0 * (1 + (simState.vgate - CONSTANTS.Vth) * 0.5);
+            }
+
+            simState.iTotal = simState.iLeakage + simState.iSub;
+
+            if (simState.running) {
+                simState.viHistory.push({ v: simState.vgate, i: simState.iTotal });
+                if (simState.viHistory.length > 250) {
+                    simState.viHistory.shift();
+                }
+            }
+
+            updateUI();
+        }
+
+        function updateUI() {
+            txtTrappedElectrons.innerText = `${simState.trappedElectrons.length} 개`;
+            
+            if (simState.trappedElectrons.length >= 10) {
+                bitStateBadge.innerText = "'0' (프로그램 상태)";
+                bitStateBadge.className = "px-3 py-1 rounded font-black text-xs bg-cyan-950 text-cyan-300 border border-cyan-700";
+            } else {
+                bitStateBadge.innerText = "'1' (소거 상태)";
+                bitStateBadge.className = "px-3 py-1 rounded font-black text-xs bg-emerald-950 text-emerald-300 border border-emerald-700";
+            }
+
+            txtTunnelProbability.innerText = `${(simState.tunnelProb * 100).toFixed(2)} %`;
+            txtLeakageCurrent.innerText = `${simState.iLeakage.toFixed(5)} A`;
+            txtSubthresholdCurrent.innerText = `${simState.iSub.toFixed(5)} A`;
+            electricFieldText.innerHTML = `<i class="fa-solid fa-bolt text-yellow-400 mr-1"></i>산화막 전기장: ${simState.electricField.toFixed(2)} MV/cm`;
+
+            const LEAKAGE_THRESHOLD = 0.001; 
+            const isHazard = simState.iLeakage >= LEAKAGE_THRESHOLD;
+
+            if (isHazard) {
+                warningBanner.classList.remove('hidden');
+                statusBadge.className = "bg-red-950/90 border border-red-500 text-red-200 px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 animate-pulse text-xs";
+                statusBadge.innerHTML = `<i class="fa-solid fa-triangle-exclamation text-xs text-red-400"></i><span>상태: 경고 (누설전류 > 1mA)</span>`;
+
+                riskIndicatorBox.className = "mt-2 p-2.5 rounded-lg border bg-red-950/60 border-red-700/60 text-red-300 text-xs font-semibold flex items-center gap-2";
+                riskIndicatorIcon.className = "fa-solid fa-circle-exclamation text-red-400 text-base";
+                riskIndicatorText.innerText = "경고: 1mA 이상 양자 터널링 누설전류 감지";
+            } else {
+                warningBanner.classList.add('hidden');
+                statusBadge.className = "bg-emerald-950/80 border border-emerald-600/50 text-emerald-300 px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 text-xs";
+                statusBadge.innerHTML = `<i class="fa-solid fa-shield-halved text-xs"></i><span>상태: 정상 (절연 유지)</span>`;
+
+                riskIndicatorBox.className = "mt-2 p-2.5 rounded-lg border bg-emerald-950/60 border-emerald-700/60 text-emerald-300 text-xs font-semibold flex items-center gap-2";
+                riskIndicatorIcon.className = "fa-solid fa-circle-check text-emerald-400 text-base";
+                riskIndicatorText.innerText = "누설 전류 안전 범위 유지 (1mA 미만)";
+            }
+        }
+
+        function drawTransistorCellArray(w, h) {
+            const cellSize = Math.max(12, Math.min(80, simState.lchannel * 0.75));
+            const cols = Math.ceil(w / cellSize);
+            const rows = Math.ceil(h / cellSize);
+
+            simCtx.save();
+            simCtx.strokeStyle = 'rgba(30, 41, 59, 0.4)';
+            simCtx.lineWidth = 1;
+
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    const x = c * cellSize;
+                    const y = r * cellSize;
+                    simCtx.strokeRect(x, y, cellSize, cellSize);
+
+                    if (cellSize >= 20) {
+                        simCtx.fillStyle = 'rgba(51, 65, 85, 0.3)';
+                        simCtx.fillRect(x + 2, y + 2, cellSize - 4, 3);
+                        simCtx.fillStyle = 'rgba(59, 130, 246, 0.15)';
+                        simCtx.fillRect(x + 3, y + cellSize - 6, (cellSize - 6)/2, 3);
+                        simCtx.fillRect(x + cellSize/2, y + cellSize - 6, (cellSize - 6)/2, 3);
+                    }
+                }
+            }
+            simCtx.restore();
+            canvasGridDensity.innerHTML = `<i class="fa-solid fa-table-cells text-blue-400 mr-1"></i>트랜지스터 미세화 스케일: ${simState.lchannel} nm (${cols * rows}개 영역)`;
+        }
+
+        function drawElectron(x, y, radius, isTrapped, colorType = 'blue') {
+            simCtx.save();
+            const grad = simCtx.createRadialGradient(
+                x - radius * 0.3, y - radius * 0.3, radius * 0.1,
+                x, y, radius
+            );
+
+            if (colorType === 'red') {
+                grad.addColorStop(0, '#fca5a5');
+                grad.addColorStop(0.5, '#ef4444');
+                grad.addColorStop(1, '#991b1b');
+            } else {
+                grad.addColorStop(0, '#93c5fd');
+                grad.addColorStop(0.5, '#3b82f6');
+                grad.addColorStop(1, '#1e3a8a');
+            }
+
+            simCtx.shadowColor = colorType === 'red' ? 'rgba(239, 68, 68, 0.8)' : 'rgba(59, 130, 246, 0.8)';
+            simCtx.shadowBlur = isTrapped ? 12 : 6;
+
+            simCtx.beginPath();
+            simCtx.arc(x, y, radius, 0, Math.PI * 2);
+            simCtx.fillStyle = grad;
+            simCtx.fill();
+
+            simCtx.lineWidth = 1.5;
+            simCtx.strokeStyle = colorType === 'red' ? '#fecaca' : '#dbeafe';
+            simCtx.stroke();
+
+            simCtx.shadowBlur = 0;
+            simCtx.fillStyle = '#ffffff';
+            simCtx.font = `bold ${Math.round(radius * 1.1)}px Arial, sans-serif`;
+            simCtx.textAlign = 'center';
+            simCtx.textBaseline = 'middle';
+            simCtx.fillText('-', x, y - 1);
+
+            simCtx.restore();
+        }
+
+        function drawSimulationCanvas() {
+            const w = simCanvas.width;
+            const h = simCanvas.height;
+
+            if (!w || !h) return;
+
+            simCtx.fillStyle = '#020617';
+            simCtx.fillRect(0, 0, w, h);
+
+            drawTransistorCellArray(w, h);
+
+            const oxideX = w * 0.28;
+            const oxideWidth = Math.max(10, simState.tox * 2.8);
+            const fgX = oxideX + oxideWidth;
+            const fgWidth = w * 0.52;
+            const fgY = h * 0.14;
+            const fgHeight = h * 0.72;
+
+            const oxideGrad = simCtx.createLinearGradient(oxideX, 0, fgX, 0);
+            if (simState.iLeakage >= 0.001) {
+                oxideGrad.addColorStop(0, 'rgba(239, 68, 68, 0.9)');
+                oxideGrad.addColorStop(1, 'rgba(220, 38, 38, 0.5)');
+            } else {
+                oxideGrad.addColorStop(0, 'rgba(234, 179, 8, 0.85)');
+                oxideGrad.addColorStop(1, 'rgba(202, 138, 4, 0.4)');
+            }
+            simCtx.fillStyle = oxideGrad;
+            simCtx.fillRect(oxideX, fgY - 10, oxideWidth, fgHeight + 20);
+
+            simCtx.strokeStyle = 'rgba(253, 224, 71, 0.8)';
+            simCtx.lineWidth = 2;
+            simCtx.strokeRect(oxideX, fgY - 10, oxideWidth, fgHeight + 20);
+
+            simCtx.fillStyle = '#fef08a';
+            simCtx.font = 'bold 12px Pretendard, sans-serif';
+            simCtx.textAlign = 'center';
+            simCtx.save();
+            simCtx.translate(oxideX + oxideWidth / 2, fgY + fgHeight / 2);
+            simCtx.rotate(-Math.PI / 2);
+            simCtx.fillText(`산화막 절연체 (${simState.tox} nm)`, 0, 0);
+            simCtx.restore();
+
+            simCtx.strokeStyle = simState.trappedElectrons.length >= 10 ? '#38bdf8' : '#475569';
+            simCtx.lineWidth = 3;
+            simCtx.fillStyle = 'rgba(15, 23, 42, 0.82)';
+            simCtx.beginPath();
+            simCtx.roundRect(fgX, fgY, fgWidth, fgHeight, 14);
+            simCtx.fill();
+            simCtx.stroke();
+
+            simCtx.fillStyle = 'rgba(148, 163, 184, 0.35)';
+            simCtx.font = 'bold 15px Pretendard, sans-serif';
+            simCtx.textAlign = 'center';
+            simCtx.fillText('플로팅 게이트 영역 (전자 저장 공간)', fgX + fgWidth / 2, fgY + 30);
+
+            const voltageSpeedMultiplier = 1.0 + (simState.vgate * 0.85);
+
+            for (let i = simState.sourceElectrons.length - 1; i >= 0; i--) {
+                let e = simState.sourceElectrons[i];
+                if (simState.running) {
+                    const accel = (simState.vgate / 7) * 1.5 + 0.5;
+                    e.x += (e.vx + accel) * voltageSpeedMultiplier;
+                    e.y += e.vy * voltageSpeedMultiplier;
+
+                    if (e.y < fgY + 25 || e.y > fgY + fgHeight - 25) e.vy *= -1;
+
+                    if (e.x >= oxideX - e.radius) {
+                        const passBarrier = Math.random() < (simState.vgate / 7.0 + simState.tunnelProb * 0.5);
+                        
+                        if (passBarrier && simState.vgate > 0.4) {
+                            simState.trappedElectrons.push({
+                                x: fgX + 30 + Math.random() * (fgWidth - 60),
+                                y: Math.max(fgY + 30, Math.min(fgY + fgHeight - 30, e.y)),
+                                vx: (Math.random() - 0.5) * 2.5,
+                                vy: (Math.random() - 0.5) * 2.5,
+                                radius: 14
+                            });
+                            simState.sourceElectrons.splice(i, 1);
+                            spawnSourceElectron();
+                            continue;
+                        } else {
+                            e.vx = -Math.abs(e.vx);
+                            e.x = oxideX - e.radius - 3;
+                        }
+                    }
+
+                    if (e.x < 12) e.vx = Math.abs(e.vx);
+                }
+                drawElectron(e.x, e.y, e.radius, false, 'blue');
+            }
+
+            for (let i = 0; i < simState.trappedElectrons.length; i++) {
+                let e = simState.trappedElectrons[i];
+                if (simState.running) {
+                    e.x += e.vx * voltageSpeedMultiplier;
+                    e.y += e.vy * voltageSpeedMultiplier;
+
+                    const minX = fgX + e.radius + 6;
+                    const maxX = fgX + fgWidth - e.radius - 6;
+                    const minY = fgY + e.radius + 6;
+                    const maxY = fgY + fgHeight - e.radius - 6;
+
+                    if (e.x < minX) { e.x = minX; e.vx *= -1; }
+                    if (e.x > maxX) { e.x = maxX; e.vx *= -1; }
+                    if (e.y < minY) { e.y = minY; e.vy *= -1; }
+                    if (e.y > maxY) { e.y = maxY; e.vy *= -1; }
+
+                    if (simState.iLeakage >= 0.001 && Math.random() < Math.min(0.6, simState.iLeakage * 10)) {
+                        simState.leakageParticles.push({
+                            x: fgX,
+                            y: e.y,
+                            vx: -(Math.random() * 3.0 + 1.5) * voltageSpeedMultiplier,
+                            vy: (Math.random() - 0.5) * 2.0 * voltageSpeedMultiplier,
+                            radius: 11,
+                            life: 1.0
+                        });
+
+                        if (Math.random() < 0.05 && simState.trappedElectrons.length > 0) {
+                            simState.trappedElectrons.splice(i, 1);
+                            i--;
+                            continue;
+                        }
+                    }
+                }
+                drawElectron(e.x, e.y, e.radius, true, 'blue');
+            }
+
+            for (let i = simState.leakageParticles.length - 1; i >= 0; i--) {
+                let p = simState.leakageParticles[i];
+                if (simState.running) {
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    p.life -= 0.02;
+                }
+
+                if (p.life <= 0) {
+                    simState.leakageParticles.splice(i, 1);
+                    continue;
+                }
+
+                simCtx.save();
+                simCtx.globalAlpha = Math.max(0, p.life);
+                drawElectron(p.x, p.y, p.radius, false, 'red');
+                simCtx.restore();
+            }
+        }
+
+        function drawGraphCanvas() {
+            const w = graphCanvas.width;
+            const h = graphCanvas.height;
+
+            if (!w || !h) return;
+
+            graphCtx.fillStyle = '#020617';
+            graphCtx.fillRect(0, 0, w, h);
+
+            const padLeft = 45;
+            const padRight = 20;
+            const padTop = 20;
+            const padBottom = 30;
+
+            const graphW = w - padLeft - padRight;
+            const graphH = h - padTop - padBottom;
+
+            graphCtx.strokeStyle = '#1e293b';
+            graphCtx.lineWidth = 1;
+
+            for (let v = 0; v <= 5; v += 1) {
+                const x = padLeft + (v / 5.0) * graphW;
+                graphCtx.beginPath();
+                graphCtx.moveTo(x, padTop);
+                graphCtx.lineTo(x, padTop + graphH);
+                graphCtx.stroke();
+
+                graphCtx.fillStyle = '#64748b';
+                graphCtx.font = '10px Pretendard, sans-serif';
+                graphCtx.textAlign = 'center';
+                graphCtx.fillText(`${v}V`, x, h - 10);
+            }
+
+            let maxI = 0.05;
+            for (let pt of simState.viHistory) {
+                if (pt.i > maxI) maxI = pt.i;
+            }
+            maxI *= 1.2;
+
+            for (let i = 0; i <= 4; i++) {
+                const yVal = (maxI / 4) * i;
+                const y = padTop + graphH - (i / 4) * graphH;
+                graphCtx.beginPath();
+                graphCtx.moveTo(padLeft, y);
+                graphCtx.lineTo(padLeft + graphW, y);
+                graphCtx.stroke();
+
+                graphCtx.fillStyle = '#64748b';
+                graphCtx.font = '10px Pretendard, sans-serif';
+                graphCtx.textAlign = 'right';
+                graphCtx.fillText(yVal < 0.01 ? yVal.toFixed(4) : yVal.toFixed(2), padLeft - 5, y + 3);
+            }
+
+            graphCtx.strokeStyle = '#475569';
+            graphCtx.lineWidth = 1.5;
+            graphCtx.beginPath();
+            graphCtx.moveTo(padLeft, padTop);
+            graphCtx.lineTo(padLeft, padTop + graphH);
+            graphCtx.lineTo(padLeft + graphW, padTop + graphH);
+            graphCtx.stroke();
+
+            if (simState.viHistory.length > 1) {
+                graphCtx.strokeStyle = '#3b82f6';
+                graphCtx.lineWidth = 2.5;
+                graphCtx.beginPath();
+
+                for (let i = 0; i < simState.viHistory.length; i++) {
+                    const pt = simState.viHistory[i];
+                    const x = padLeft + (pt.v / 5.0) * graphW;
+                    const y = padTop + graphH - (pt.i / maxI) * graphH;
+
+                    if (i === 0) graphCtx.moveTo(x, y);
+                    else graphCtx.lineTo(x, y);
+                }
+                graphCtx.stroke();
+            }
+
+            if (graphHoverPos && simState.viHistory.length > 0) {
+                const hx = graphHoverPos.x;
+                const hy = graphHoverPos.y;
+
+                if (hx >= padLeft && hx <= padLeft + graphW && hy >= padTop && hy <= padTop + graphH) {
+                    const targetV = ((hx - padLeft) / graphW) * 5.0;
+
+                    let closest = simState.viHistory[0];
+                    let minDiff = Math.abs(closest.v - targetV);
+
+                    for (let i = 1; i < simState.viHistory.length; i++) {
+                        const diff = Math.abs(simState.viHistory[i].v - targetV);
+                        if (diff < minDiff) {
+                            minDiff = diff;
+                            closest = simState.viHistory[i];
+                        }
+                    }
+
+                    const cx = padLeft + (closest.v / 5.0) * graphW;
+                    const cy = padTop + graphH - (closest.i / maxI) * graphH;
+
+                    graphCtx.save();
+                    graphCtx.setLineDash([4, 4]);
+                    graphCtx.strokeStyle = '#94a3b8';
+                    graphCtx.lineWidth = 1;
+
+                    graphCtx.beginPath();
+                    graphCtx.moveTo(cx, padTop);
+                    graphCtx.lineTo(cx, padTop + graphH);
+                    graphCtx.stroke();
+
+                    graphCtx.beginPath();
+                    graphCtx.moveTo(padLeft, cy);
+                    graphCtx.lineTo(padLeft + graphW, cy);
+                    graphCtx.stroke();
+                    graphCtx.restore();
+
+                    graphCtx.fillStyle = '#60a5fa';
+                    graphCtx.beginPath();
+                    graphCtx.arc(cx, cy, 5, 0, Math.PI * 2);
+                    graphCtx.fill();
+                    graphCtx.strokeStyle = '#ffffff';
+                    graphCtx.lineWidth = 1.5;
+                    graphCtx.stroke();
+
+                    const tipText = `전압: ${closest.v.toFixed(2)} V, 전류: ${closest.i.toFixed(4)} A`;
+                    graphCtx.font = '11px Pretendard, sans-serif';
+                    const textWidth = graphCtx.measureText(tipText).width;
+
+                    let tipX = cx + 10;
+                    let tipY = cy - 25;
+
+                    if (tipX + textWidth + 16 > w) tipX = cx - textWidth - 20;
+                    if (tipY < 10) tipY = cy + 15;
+
+                    graphCtx.fillStyle = 'rgba(15, 23, 42, 0.9)';
+                    graphCtx.strokeStyle = '#334155';
+                    graphCtx.lineWidth = 1;
+                    graphCtx.beginPath();
+                    graphCtx.roundRect(tipX, tipY, textWidth + 16, 24, 6);
+                    graphCtx.fill();
+                    graphCtx.stroke();
+
+                    graphCtx.fillStyle = '#f8fafc';
+                    graphCtx.textAlign = 'left';
+                    graphCtx.fillText(tipText, tipX + 8, tipY + 16);
+                }
+            }
+        }
+
+        function simLoop() {
+            if (simState.running) {
+                updatePhysics();
+            }
+            drawSimulationCanvas();
+            drawGraphCanvas();
+            requestAnimationFrame(simLoop);
+        }
+
+        /* ==========================================================================
+           3. SIMULATION 2: SSD 메모리 소자 (NAND Flash 100-Cell Model)
+           ========================================================================== */
+        const totalCells = 100;
+        let cellsData = new Array(totalCells).fill(1); // 1: 빈 상태(소거) / 0: 전자 있음(프로그램)
+
+        const cellGrid = document.getElementById('cellGrid');
+        const ssdVoltageBanner = document.getElementById('ssdVoltageBanner');
+        const ssdBinaryOutput = document.getElementById('ssdBinaryOutput');
+
+        function initSSDGrid() {
+            if (!cellGrid) return;
+            cellGrid.innerHTML = '';
+            for (let i = 0; i < totalCells; i++) {
+                const cell = document.createElement('div');
+                cell.className = `ssd-cell w-8 h-8 sm:w-9 sm:h-9 rounded-lg flex flex-col justify-center items-center font-bold text-xs cursor-pointer ${
+                    cellsData[i] === 1 
+                        ? 'bg-cyan-950/60 text-cyan-300 border border-cyan-800/80 shadow' 
+                        : 'bg-amber-500/20 text-amber-400 border border-amber-500 shadow-md shadow-amber-500/10'
+                }`;
+                cell.id = `ssd-cell-${i}`;
+                cell.innerHTML = `<span>${cellsData[i]}</span><span class="text-[9px] opacity-75 font-normal">${cellsData[i] === 0 ? 'e⁻' : ''}</span>`;
+                cell.onclick = () => toggleSSDCell(i);
+                cellGrid.appendChild(cell);
+            }
+        }
+
+        function toggleSSDCell(index) {
+            cellsData[index] = cellsData[index] === 1 ? 0 : 1;
+            if (cellsData[index] === 0) {
+                setSSDVoltageState("단일 쓰기 (Program): 게이트 전압 +20V (전자 주입)", "bg-amber-950/90 text-amber-300 border-amber-600");
+            } else {
+                setSSDVoltageState("단일 소거 (Erase): 기판 역전압 -20V (전자 방출)", "bg-emerald-950/90 text-emerald-300 border-emerald-600");
+            }
+            updateSSDGridUI();
+        }
+
+        function updateSSDGridUI() {
+            for (let i = 0; i < totalCells; i++) {
+                const cell = document.getElementById(`ssd-cell-${i}`);
+                if (cell) {
+                    cell.className = `ssd-cell w-8 h-8 sm:w-9 sm:h-9 rounded-lg flex flex-col justify-center items-center font-bold text-xs cursor-pointer ${
+                        cellsData[i] === 1 
+                            ? 'bg-cyan-950/60 text-cyan-300 border border-cyan-800/80 shadow' 
+                            : 'bg-amber-500/20 text-amber-400 border border-amber-500 shadow-md shadow-amber-500/10'
+                    }`;
+                    cell.innerHTML = `<span>${cellsData[i]}</span><span class="text-[9px] opacity-75 font-normal">${cellsData[i] === 0 ? 'e⁻' : ''}</span>`;
+                }
+            }
+        }
+
+        function setSSDVoltageState(text, colorClasses) {
+            ssdVoltageBanner.textContent = text;
+            ssdVoltageBanner.className = `px-4 py-2 rounded-xl text-xs sm:text-sm font-bold border transition-all ${colorClasses}`;
+        }
+
+        function textToBinary(text) {
+            let binaryStr = "";
+            for (let i = 0; i < text.length; i++) {
+                const charCode = text.charCodeAt(i);
+                const bits = charCode > 255 ? charCode.toString(2).padStart(16, '0') : charCode.toString(2).padStart(8, '0');
+                binaryStr += bits;
+            }
+            return binaryStr;
+        }
+
+        function writeInputData() {
+            const inputVal = document.getElementById('ssdUserInput').value.trim();
+            if (!inputVal) return;
+
+            cellsData.fill(1);
+
+            const binaryStr = textToBinary(inputVal);
+            let displayHTML = `<span class="text-slate-400">입력문자:</span> <span class="text-amber-400 font-bold">"${inputVal}"</span><br><span class="text-slate-400">이진 비트:</span><br>`;
+
+            for (let i = 0; i < Math.min(binaryStr.length, totalCells); i++) {
+                const bit = parseInt(binaryStr[i]);
+                cellsData[i] = bit;
+                displayHTML += `<span class="${bit === 0 ? 'text-amber-400 font-bold' : 'text-cyan-400'}">${bit}</span>`;
+                if ((i + 1) % 8 === 0) displayHTML += " ";
+            }
+
+            if (binaryStr.length > totalCells) {
+                displayHTML += `<br><span class="text-rose-400 text-[10px]">(100개 셀 용량 초과로 일부 잘림)</span>`;
+            }
+
+            ssdBinaryOutput.innerHTML = displayHTML;
+            setSSDVoltageState("쓰기 동작 (Program): 강한 양전압 +20V 가함 (전자 가둠)", "bg-amber-950/90 text-amber-300 border-amber-600");
+            updateSSDGridUI();
+        }
+
+        function eraseAllData() {
+            cellsData.fill(1);
+            ssdBinaryOutput.innerHTML = "<span class='text-emerald-400'>[전체 소거 완료: 모든 셀의 전자가 방출되었습니다 (Data 1)]</span>";
+            setSSDVoltageState("전체 소거 (Erase): 역방향 전압 -20V 가함 (전자 방출)", "bg-rose-950/90 text-rose-300 border-rose-600");
+            updateSSDGridUI();
+        }
+
+        /* ==========================================================================
+           4. INITIALIZATION
+           ========================================================================== */
+        window.addEventListener('load', () => {
+            resizeCanvases();
+            initParticles();
+            setupEventListeners();
+            initSSDGrid();
+            writeInputData(); // 기본 '사과' 쓰기 동작 초기화
+            requestAnimationFrame(simLoop);
+        });
+
+        window.addEventListener('resize', resizeCanvases);
+    </script>
+</body>
+</html>
